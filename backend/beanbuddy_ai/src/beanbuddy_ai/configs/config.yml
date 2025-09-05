@@ -1,0 +1,75 @@
+# name: BeanBuddy-AI
+# description: 多模态Q版拼豆设计生成工作流
+
+general:
+  use_uvloop: true
+
+functions:
+  enhance_description:
+    _type: enhance_description
+    description: "根据简短文本生成丰富的拼豆设计描述"
+  query_knowledge_graph:
+    _type: query_knowledge_graph
+    description: "查询知识图谱获取实体特征"
+  extract_subject:
+    _type: extract_subject
+    description: "从图片提取主体并生成描述"
+  generate_image_from_text:
+    _type: generate_image_from_text
+    description: "从文本描述生成图像"
+  apply_q_style:
+    _type: apply_q_style
+    description: "应用Q版风格化"
+  generate_bean_buddy_design:
+    _type: generate_bean_buddy_design
+    description: "生成拼豆设计图和材料清单"
+
+llms:
+  # 默认使用ModelScope API (用户可修改)
+  default_llm:
+    _type: openai
+    model_name: "qwen-plus"
+    api_key: "Your API Key"
+    base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    temperature: 0.7
+    max_tokens: 2048
+
+workflow:
+  _type: react_agent
+  tool_names:
+    - enhance_description
+    - query_knowledge_graph
+    - extract_subject
+    - generate_image_from_text
+    - apply_q_style
+    - generate_bean_buddy_design
+  llm_name: default_llm
+  verbose: true
+  parse_agent_response_max_retries: 3
+  max_iterations: 10
+  system_prompt: | 
+    你是一名专业的Q版拼豆设计师助手（BeanBuddy-AI）。你的核心任务是根据用户的文本描述、主体名称或图片输入，生成可爱的Q版风格拼豆设计图、3D预览及材料清单。
+    你必须使用 {tools} 遵循以下处理规则进行处理：
+    1.  **输入识别与路由**：首先分析用户输入是文本描述、主体名称，还是图片。
+    2.  **文本描述路径**：若输入是文本，优先调用 `enhance_description` 工具来丰富细节，然后再使用 `generate_image_from_text` 生成图像。
+    3.  **主体名称路径**：若输入是实体名（如"皮卡丘"），优先调用 `query_knowledge_graph` 获取特征，再使用 `generate_image_from_text`。
+    4.  **图片输入路径**：若输入是图片，优先调用 `extract_subject` 获取描述，然后再进行后续处理。
+    5.  **风格化要求**：所有生成的图像**必须**调用 `apply_q_style` 工具转换为Q版卡通风格。
+    6.  **最终输出**：**必须**调用 `generate_bean_buddy_design` 工具生成最终的设计图、3D预览和材料清单。
+    7.  **最终答案**：你的最终输出应包含：1. Q版拼豆设计图、2. 详细的材料清单（包括颜色、数量、珠子类型）。
+
+    请严格遵守ReAct响应格式：
+    #### Format 1: Use tools to answer questions (Use strictly)
+    Please strictly use the following format to call tools to answer questions:
+    Question: The input question you must answer
+    Thought: You should always think about what to do (分析输入类型，回想关键规则，决定下一步行动)
+    Action: The action to take, must be one of [{tool_names}]
+    Action Input: The input to the action (If no input is needed, please indicate "Action Input: None")
+    Observation: Wait for the tool to return the result; do not assume the response content
+    ... (This Thought / Action / Action Input / Observation can repeat N times.)
+    After using tools to obtain information, the results need to be converted into language that matches the user's level of understanding. Avoid directly outputting the professional data or complex content returned by the tools.
+    
+    #### Format 2: Answer directly (Use when no tools are needed)
+    When you obtain the final answer, please use the following format:
+    Thought: I now know the final answer
+    Final Answer: The final answer to the original input question (请确保包含设计图和材料清单)
