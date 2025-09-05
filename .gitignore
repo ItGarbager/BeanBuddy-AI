@@ -1,0 +1,234 @@
+# ---------------------------- #
+# Python 开发环境 & 构建输出      #
+# ---------------------------- #
+# 字节编译文件 / 优化文件 / DLL 文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# C 扩展
+*.so
+
+# 分发 / 打包
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.whl
+
+# PyInstaller
+*.manifest
+*.spec
+
+# 安装器日志
+pip-log.txt
+pip-delete-this-directory.txt
+
+# 单元测试 / 覆盖率报告
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+testlog/
+
+# 翻译文件
+*.mo
+*.pot
+
+# ---------------------------- #
+# 虚拟环境 (非常重要！)         #
+# ---------------------------- #
+.env
+.venv
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ---------------------------- #
+# 常见 Web 框架                #
+# ---------------------------- #
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask
+instance/
+.webassets-cache
+
+# Scrapy
+.scrapy
+
+# ---------------------------- #
+# 文档                         #
+# ---------------------------- #
+# Sphinx
+docs/_build/
+docs/source/_build/
+_autosummary/
+
+# MkDocs
+/site
+
+# ---------------------------- #
+# IDE 与编辑器配置             #
+# ---------------------------- #
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm / IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ---------------------------- #
+# 操作系统生成文件             #
+# ---------------------------- #
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ---------------------------- #
+# 其他                        #
+# ---------------------------- #
+# 压缩包
+*.7z
+*.jar
+*.rar
+*.zip
+*.gz
+*.gzip
+*.tgz
+*.bzip
+*.bzip2
+*.bz2
+*.xz
+*.lzma
+*.cab
+*.xar
+*.iso
+*.tar
+*.dmg
+*.xpi
+*.gem
+*.deb
+*.rpm
+*.msi
+*.msm
+*.msp
+*.txz
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*~
+*.bak
+*.backup
+
+# 环境变量文件 (通常包含敏感信息)
+.env
+.secrets
+
+# 自定义数据或日志目录（根据你的项目调整）
+data/
+logs/
+results/
+
+/backend/.cursor
+/backend/examples/
+/backend/.tmp/
+/backend/LICENSE-3rd-party.txt
+/backend/.nspect-allowlist.toml
+/backend/.cursor/
+/backend/scripts/
+/backend/docker/
+/backend/uv.lock
+/backend/.vale.ini
+/backend/.coderabbit.yaml
+/backend/LICENSE.md
+/backend/docs/
+/backend/CHANGELOG.md
+/backend/external/
+/backend/.pre-commit-config.yaml
+/backend/.gitmodules
+/backend/SECURITY.md
+/backend/packages/
+/backend/tests/
+/backend/CODE-OF-CONDUCT.md
+/backend/.dockerignore
+/backend/.gitattributes
+/backend/ci/
+/backend/.gitlab-ci.yml
+/backend/configs/
+/backend/src/
+/backend/README.md
+/backend/pyproject.toml
+/backend/nat.code-workspace
+/backend/CONTRIBUTING.md
+/docs/test.md
