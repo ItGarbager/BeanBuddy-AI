@@ -1,35 +1,23 @@
-import {
-  IconArrowDown,
-  IconBolt,
-  IconPaperclip,
-  IconPhoto,
-  IconPlayerStop,
-  IconRepeat,
-  IconSend,
-  IconTrash,
-  IconMicrophone,
-  IconPlayerStopFilled,
-  IconMicrophone2,
-} from '@tabler/icons-react';
-import {
-  KeyboardEvent,
-  MutableRefObject,
-  Ref,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { IconArrowDown, IconBolt, IconPaperclip, IconPhoto, IconPlayerStop, IconRepeat, IconSend, IconTrash, IconMicrophone, IconPlayerStopFilled, IconMicrophone2 } from '@tabler/icons-react';
+import { KeyboardEvent, MutableRefObject, Ref, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
+
+
 
 import { useTranslation } from 'next-i18next';
+
+
+
+import { appConfig } from '@/utils/app/const';
+import { compressImage, getWorkflowName } from '@/utils/app/helper';
+
+
 
 import { Message } from '@/types/chat';
 
 import HomeContext from '@/pages/api/home/home.context';
-import { compressImage, getWorkflowName } from '@/utils/app/helper';
-import { appConfig } from '@/utils/app/const';
-import toast from 'react-hot-toast';
+// @ts-ignore
+import OSS from 'ali-oss';
 
 
 interface Props {
@@ -71,6 +59,54 @@ export const ChatInput = ({
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef(null);
 
+    // 1. 初始化OSS客户端（建议用useMemo缓存，避免重复创建）
+  const ossClient = useMemo(() => {
+    try {
+      return new OSS({
+        region: process.env.REACT_APP_OSS_REGION || 'oss-cn-beijing',
+        accessKeyId: process.env.REACT_APP_OSS_ACCESS_KEY_ID || 'LTAI5tMdnfA1ZARnE1r8pVFf',
+        accessKeySecret: process.env.REACT_APP_OSS_ACCESS_KEY_SECRET,
+        bucket: process.env.REACT_APP_OSS_BUCKET || 'hackathon-aiqtoolkit',
+        authorizationV4: true, // 浏览器端必须开启V4签名
+        secure: true, // 用HTTPS（避免HTTP跨域问题）
+      });
+    } catch (err) {
+      console.error('OSS客户端初始化失败：', err);
+      return null; // 初始化失败时返回null，后续做容错
+    }
+  }, []); // 依赖环境变量，环境不变则不重新创建
+
+    // 2. OSS文件上传函数（接收File对象，返回上传后的URL）
+  const uploadToOSS = async (file: File): Promise<string | null> => {
+    if (!ossClient || !file) return null;
+
+    try {
+      // 生成动态文件名（避免重复覆盖，用时间戳+原文件名）
+      const fileName = `chat-uploads/${Date.now()}-${file.name}`;
+      // 浏览器端上传：直接传入File对象（无需读取本地路径）
+      const result = await ossClient.put(
+        fileName, // OSS中的文件路径（不含Bucket名）
+        file,     // 浏览器选择的File对象
+        {
+          headers: {
+            'x-oss-storage-class': 'Standard',
+            'x-oss-object-acl': 'public-read',
+            // 取消禁止覆盖：动态文件名已避免重复，若需禁止可保留
+            // 'x-oss-forbid-overwrite': 'true',
+          },
+        }
+      );
+
+      console.log('OSS上传成功：', result);
+      // 返回文件URL（私有文件需用signUrl生成临时访问链接）
+      return result.url;
+    } catch (err) {
+      console.error('OSS上传失败：', err);
+      alert('文件上传失败，请重试');
+      return null;
+    }
+  };
+
   const triggerFileUpload = () => {
     fileInputRef?.current.click();
   };
@@ -82,9 +118,16 @@ export const ChatInput = ({
     setInputFileContentCompressed('');
   };
 
-  const handleFileChange = (e: { target: { files: any[]; value: null; }; }) => {
-    const file = e.target.files[0]
+  const handleFileChange = async (e: {
+    target: { files: any[]; value: null };
+  }) => {
+    const file = e.target.files[0];
     if (file) {
+      const fileUrl = await uploadToOSS(file);
+      if (fileUrl) {
+        // 上传成功：将文件URL传入发送逻辑（例：拼接至content，或单独传给onSend）
+        setContent(fileUrl);
+      }
       // Reset the input value so the same file can be selected again if needed
       e.target.value = null
       const reader = new FileReader()

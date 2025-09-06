@@ -59,27 +59,23 @@ async def identify_input_type_function(
         try:
             # 1. 图像输入检测路径
             if _is_likely_image_data(raw_input):
-                image_type, reasoning = await _analyze_image_input(raw_input)
+                input_type = 'image'
+                result_metadata = {}
+            else:
+                # 2. 文本输入处理路径（包括字节解码为字符串）
+                text_input = _extract_text_from_input(raw_input)
+
+                # 3. 文本分类：区分实体名称 vs. 文本描述
+                input_type = await _classify_text_input(
+                    text_input, config, builder, result_metadata
+                )
+
+                # 将文本分类结果信息存入metadata
                 result_metadata.update({
-                    "detected_format": image_type,
-                    "reasoning": reasoning,
-                    "original_data_type": "bytes"
+                    "processed_text": text_input,  # 处理后的文本内容
+                    "text_length": len(text_input),
+                    "original_data_type": "string"
                 })
-
-            # 2. 文本输入处理路径（包括字节解码为字符串）
-            text_input = _extract_text_from_input(raw_input)
-
-            # 3. 文本分类：区分实体名称 vs. 文本描述
-            input_type = await _classify_text_input(
-                text_input, config, builder, result_metadata
-            )
-
-            # 将文本分类结果信息存入metadata
-            result_metadata.update({
-                "processed_text": text_input,  # 处理后的文本内容
-                "text_length": len(text_input),
-                "original_data_type": "string"
-            })
 
             return IdentifyInputTypeOutput(
                 input_type=input_type,
@@ -115,7 +111,7 @@ async def identify_input_type_function(
 
 def _is_likely_image_data(data: Union[str, bytes]) -> bool:
     """初步判断输入数据是否为图像"""
-    return isinstance(data, bytes)
+    return isinstance(data, bytes) or 'http' in str(data) or 'https' in str(data)
 
 
 async def _analyze_image_input(image_data: bytes) -> tuple[str, str]:

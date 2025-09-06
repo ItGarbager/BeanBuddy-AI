@@ -12,5 +12,5 @@ export const webSocketMessageTypes = {
 }
 
 export const appConfig = {
-    fileUploadEnabled : false
+    fileUploadEnabled : true
 }
