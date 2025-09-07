@@ -54,7 +54,7 @@ cd BeanBuddy-AI
 ```shell
 cd backend/
 pip install -r requirements.txt
-pip install 
+pip install -e beanbuddy_ai
 ```
 
 ##### 前端
@@ -106,6 +106,7 @@ llms:
 
 #### 启动后端服务
 ```shell
+cd backend
 nat serve --config_file beanbuddy_ai/src/beanbuddy_ai/configs/config.yml --host 0.0.0.0 --port 8001
 ```
 
