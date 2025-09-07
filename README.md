@@ -214,10 +214,21 @@ aiq serve --port 8002
 - 验证API密钥的有效性和权限
 
 
-#### 4. 前端无法连接后端
+#### 3. 前端无法连接后端
 - 检查后端是否正常启动（访问 http://localhost:8001/health）
 - 确认端口配置正确
 - 检查防火墙设置
+
+#### 4. 系统缺少OpenGL 图形库(Opencv不可用)
+Ubuntu/Debian
+```shell
+sudo apt-get update && sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
+```
+
+Centos/RHEL
+```shell
+sudo yum install -y mesa-libGL
+```
 
 ### 日志查看
 
