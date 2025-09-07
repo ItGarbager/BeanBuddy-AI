@@ -124,20 +124,20 @@ npm run dev
 ## 🧪 功能测试
 
 ### 主体拼豆设计图生成
-> - 用户: 佐助 
+> - 用户: 佐助  
 > - AI:  
 > <img src="docs/images/entity_name/zuozhu_perler.png" width="40%">
 
 
 ### 上次图片转拼豆设计图
 > - 用户:  
-> <img src="docs/images/extract_subject/lizijia.jpg" width="40%">
+> <img src="docs/images/extract_subject/lizijia.jpg" width="40%">  
 > - AI:   
 > <img src="docs/images/extract_subject/lizijia_perler.png" width="40%">
 
 
 ### 描述转拼豆设计图
-> - 用户: 一只马三只脚腾空，一只脚踩在一个飞的燕子上 
+> - 用户: 一只马三只脚腾空，一只脚踩在一个飞的燕子上  
 > - AI:  
 > <img src="docs/images/dscription/mtfy.png" width="40%">
 
