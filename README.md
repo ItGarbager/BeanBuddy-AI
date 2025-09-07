@@ -147,19 +147,21 @@ npm run dev
 ## 📁 项目结构
 
 ```
-nvidia-nemo-agent-toolkit-hackathon/
-├── configs/                    # 配置文件
-│   └── hackathon_config.yml   # 主配置文件
-├── external/                   # 外部模块
-│   └── aiqtoolkit-opensource-ui/  # 官方UI
-├── docs/                       # 文档和截图
-│   └── ui_screenshot.png      # 界面截图
-├── src/                        # 源代码
-├── install.sh                  # Linux/macOS安装脚本
-├── install.bat                 # Windows安装脚本
-├── start.sh                    # 启动脚本
-├── stop.sh                     # 停止脚本
-└── README.md                   # 说明文档
+BeanBuddy-AI/
+├── backend/                   # 后端项目
+│   └── beanbuddy_ai/
+│       ├── src/               # 后端项目源码
+│       │   ├── beanbuddy_ai/
+│       │   │   ├── configs/   # 启动配置目录
+│       │   │   ...
+│       │   └── beanbuddy_ai.egg-info/
+│       │
+│       └── pyproject.toml     # 项目配置
+├── docs/                      # 文档目录
+│   └── images/...             # 文档截图
+│ 
+├── frontend/                  # 前端项目
+└── README.md                  # 说明文档
 ```
 
 ## ⚙️ 高级配置
