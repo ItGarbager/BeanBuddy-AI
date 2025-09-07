@@ -12,18 +12,17 @@ functions:
   enhance_description:
     _type: enhance_description
     description: "根据简短文本生成丰富的拼豆设计描述"
+    llm_name: "default_llm"
   query_knowledge_graph:
     _type: query_knowledge_graph
     description: "查询知识图谱获取实体特征"
+    llm_name: "default_llm"
   extract_subject:
     _type: extract_subject
-    description: "从图片提取主体并生成描述"
+    description: "从图片提取主体生成图像"
   generate_image_from_text:
     _type: generate_image_from_text
     description: "从文本描述生成图像"
-  apply_q_style:
-    _type: apply_q_style
-    description: "**强制性工具**。将任何输入图像转换为统一的、可爱的Q版卡通风格。这是生成有效拼豆设计的必经步骤，所有图像在进入 `generate_bean_buddy_design` 前必须由此工具处理。"
   generate_bean_buddy_design:
     _type: generate_bean_buddy_design
     description: "生成拼豆设计图和材料清单"
@@ -33,7 +32,7 @@ llms:
   default_llm:
     _type: openai
     model_name: "qwen-plus"
-    api_key: "sk-f1ea5d982ad84844b39e58ffba549b2a"
+    api_key: "sk-21dd3572c91f4c5fb74ce4ae303a3c6b"
     base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
     temperature: 0.7
     max_tokens: 2048
@@ -46,7 +45,6 @@ workflow:
     - query_knowledge_graph
     - extract_subject
     - generate_image_from_text
-    - apply_q_style
     - generate_bean_buddy_design
   llm_name: default_llm
   verbose: true
@@ -60,16 +58,14 @@ workflow:
     2.  **路由与生成（核心处理）**：根据 `identify_input_type` 工具返回的 `input_type` 字段，选择正确的处理路径：
         *   若返回 `"text_description"`，则调用 `enhance_description` 工具来丰富细节，然后再使用 `generate_image_from_text` 生成图像。
         *   若返回 `"entity_name"`，则调用 `query_knowledge_graph` 工具获取特征，再使用 `generate_image_from_text` 生成图像。
-        *   若返回 `"image"`，则调用 `extract_subject` 工具获取描述，然后再调用 `generate_image_from_text` 生成新的图像。
-    3.  **风格化（统一处理）**：**所有由 `generate_image_from_text` 工具生成的图像，在进入最终设计阶段前，都绝对必须调用 `apply_q_style` 工具将其转换为Q版卡通风格。** 未经此步骤处理的图像无法用于生成最终的拼豆设计。
-    4.  **最终设计**：获得Q版风格图像后，**必须**调用 `generate_bean_buddy_design` 工具来生成最终的设计图和材料清单。
-    5.  **最终答案**：你的最终输出应包含：
+        *   若返回 `"image"`，则调用 `extract_subject` 工具自动抠图，生成图像。
+    3.  **最终设计**：获得图像后，**必须**调用 `generate_bean_buddy_design` 工具来生成最终的设计图和材料清单。
+    4.  **最终答案**：你的最终输出应包含：
         *   1. Q版拼豆设计图
         *   2. 详细的材料清单（包括颜色、数量、珠子类型）。
     
     **工具调用规范（重要！）：**
-    *   调用工具时，`Action Input` **必须**是一个严格的JSON对象，其键值对结构必须与工具定义的输入参数**完全匹配**。
-    *   例如，调用 `identify_input_type` 时，应使用：`{{"input_data": "用户输入的具体内容"}}`
+    *   调用 `identify_input_type` 工具时，`Action Input` **必须**是一个严格的JSON对象，其键值对结构必须与工具定义的输入参数**完全匹配**，保证JSON结构完整，不要出现多余字符。
     
     **可用工具列表及描述：**
     {tools}
