@@ -240,7 +240,7 @@ tail -f logs/aiq.log
 
 # 查看前端日志
 cd external/aiqtoolkit-opensource-ui
-npm run dev -- --verbose
+npm run dev --verbose
 ```
 
 ## 📚 相关资源
