@@ -46,7 +46,7 @@ class ExtractSubjectConfig(FunctionBaseConfig, name="extract_subject"):
         description="图片主体提取的具体指令，可根据需求调整（如强调保留特定细节）。"
     )
 
-    # 3. API调用超时时间（单位：秒）
+    # API调用超时时间（单位：秒）
     timeout: int = Field(
         default=30,
         description="Qwen-Image-Edit API调用的超时时间，默认30秒。"

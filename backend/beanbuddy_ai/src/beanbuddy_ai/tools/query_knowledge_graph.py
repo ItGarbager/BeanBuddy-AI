@@ -98,13 +98,13 @@ async def _generate_entity_features(subject_name: str, config: QueryKnowledgeGra
     现在，请根据用户输入的主体名称，生成相应的详细特征描述。
     用户输入：“{subject_name}”
     """
-    # 3. 调用LLM并获取响应
+    # 调用LLM并获取响应
     try:
         llm = await builder.get_llm(config.llm_name, wrapper_type=LLMFrameworkEnum.LANGCHAIN)
         response = await llm.ainvoke(prompt)
-        # 4. 清理和解析响应，去除可能的首尾空格或换行，进行小写比较以确保鲁棒性
+        # 清理和解析响应，去除可能的首尾空格或换行，进行小写比较以确保鲁棒性
         return response.content
     except Exception as e:
-        # 5. 异常处理：如果LLM调用失败，记录错误并默认返回False，避免阻塞主流程
-        logger.error(f"在验证实体 '{subject_name}' 时调用LLM失败: {str(e)}")
+        # 异常处理：如果LLM调用失败，记录错误并默认返回False，避免阻塞主流程
+        logger.error(f"在查询主体特征 '{subject_name}' 时调用LLM失败: {str(e)}")
         return subject_name

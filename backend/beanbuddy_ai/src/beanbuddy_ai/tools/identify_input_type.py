@@ -52,7 +52,7 @@ async def identify_input_type_function(
             - "image" -> extract_subject -> ...
         """
 
-        # 初始化metadata，合并用户传入的元数据
+        # 1. 获取用户输入文本
         raw_input = input_data.input_data
 
         try:
@@ -68,7 +68,7 @@ async def identify_input_type_function(
             input_type = await _classify_text_input(
                 text_input, config, builder
             )
-
+            # 4. 返回工具响应
             return IdentifyInputTypeOutput(
                 input_data=text_input,
                 input_type=input_type
@@ -199,12 +199,12 @@ async def _validate_entity(entity_name: str, config: IdentifyInputTypeConfig, bu
 
     需要判断的名称：{entity_name}
     """
-    # 3. 调用LLM并获取响应
+    # 调用LLM并获取响应
     try:
         response = await llm.ainvoke(prompt)
-        # 4. 清理和解析响应，去除可能的首尾空格或换行，进行小写比较以确保鲁棒性
+        # 清理和解析响应，去除可能的首尾空格或换行，进行小写比较以确保鲁棒性
         return response.content == "是"
     except Exception as e:
-        # 5. 异常处理：如果LLM调用失败，记录错误并默认返回False，避免阻塞主流程
+        # 异常处理：如果LLM调用失败，记录错误并默认返回False，避免阻塞主流程
         logger.error(f"在验证实体 '{entity_name}' 时调用LLM失败: {str(e)}")
         return False

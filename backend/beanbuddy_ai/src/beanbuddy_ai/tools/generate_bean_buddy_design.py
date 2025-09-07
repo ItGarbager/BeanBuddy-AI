@@ -81,7 +81,7 @@ def _generate_bead_design(image_url: str, color_card_template: str = "卡卡") -
         dict: 包含处理后的图片数据（如Base64编码字符串）和颜色统计结果。
     """
 
-    # 5. 保存结果图片
+    # 保存结果图片路径
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     image_name = f"bead_design_{timestamp}.png"
     image_output_path = f"../frontend/public/{image_name}"
@@ -262,9 +262,7 @@ def process_large_image_with_color_matching(image_url, color_card_json,
             for y in range(grid_size, height, grid_size):
                 draw.line([(grid_size, y), (width, y)], fill='white', width=1)
         # 保存输出图像
-        print(image_output_path, draw_labels or replace_colors)
         if image_output_path and (draw_labels or replace_colors):
-            print(image_output_path)
             canvas.save(image_output_path)
 
     os.remove("temp.png")
