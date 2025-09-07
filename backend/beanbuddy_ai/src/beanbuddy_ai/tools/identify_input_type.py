@@ -1,6 +1,6 @@
 import logging
-from typing import Dict, Any, Union
 
+import aiohttp
 from nat.builder.builder import Builder
 from nat.builder.framework_enum import LLMFrameworkEnum
 from nat.builder.function_info import FunctionInfo
@@ -42,7 +42,7 @@ async def identify_input_type_function(
         核心识别逻辑
 
         Args:
-            input_data: 包含用户输入数据的模型对象
+            input_data: 包含用户输入信息
 
         Returns:
             IdentifyInputTypeOutput: 包含识别结果（input_type）和元数据（metadata）的模型对象
@@ -53,50 +53,34 @@ async def identify_input_type_function(
         """
 
         # 初始化metadata，合并用户传入的元数据
-        result_metadata = input_data.metadata.copy() if input_data.metadata else {}
         raw_input = input_data.input_data
 
         try:
-            # 1. 图像输入检测路径
-            if _is_likely_image_data(raw_input):
-                input_type = 'image'
-                result_metadata = {}
-            else:
-                # 2. 文本输入处理路径（包括字节解码为字符串）
-                text_input = _extract_text_from_input(raw_input)
+            if raw_input.startswith("http://") or raw_input.startswith("https://"):
+                validate_content_type = await check_image_async(raw_input)
+                if validate_content_type:
+                    return IdentifyInputTypeOutput(input_data=input_data.input_data, input_type=InputType.IMAGE)
 
-                # 3. 文本分类：区分实体名称 vs. 文本描述
-                input_type = await _classify_text_input(
-                    text_input, config, builder, result_metadata
-                )
+            # 2. 文本输入处理路径（包括字节解码为字符串）
+            text_input = _extract_text_from_input(raw_input)
 
-                # 将文本分类结果信息存入metadata
-                result_metadata.update({
-                    "processed_text": text_input,  # 处理后的文本内容
-                    "text_length": len(text_input),
-                    "original_data_type": "string"
-                })
+            # 3. 文本分类：区分实体名称 vs. 文本描述
+            input_type = await _classify_text_input(
+                text_input, config, builder
+            )
 
             return IdentifyInputTypeOutput(
-                input_type=input_type,
-                metadata=result_metadata
+                input_type=input_type
             )
 
         except Exception as e:
-            logger.error(f"输入识别过程中发生错误: {str(e)}", exc_info=True)
+            safe_text = str(raw_input) if not isinstance(raw_input, bytes) else "binary_data_input"
+            logger.error(f"{safe_text}: 输入识别过程中发生错误: {str(e)}", exc_info=True)
             # 在出现错误时提供一个安全且符合格式的默认输出
             # 默认视为文本描述，由后续工具链处理
-            safe_text = str(raw_input) if not isinstance(raw_input, bytes) else "binary_data_input"
-            result_metadata.update({
-                "error": str(e),
-                "fallback_reason": "处理过程中发生异常，降级为文本描述",
-                "processed_text": safe_text,
-                "confidence": 0.0
-            })
 
             return IdentifyInputTypeOutput(
-                input_type=InputType.TEXT_DESCRIPTION,
-                metadata=result_metadata
+                input_type=InputType.TEXT_DESCRIPTION
             )
 
     try:
@@ -109,12 +93,30 @@ async def identify_input_type_function(
         logger.info("Cleaning up identify_input_type workflow.")
 
 
-def _is_likely_image_data(data: Union[str, bytes]) -> bool:
-    """初步判断输入数据是否为图像"""
-    return isinstance(data, bytes) or 'http' in str(data) or 'https' in str(data)
+async def check_image_async(url):
+    magic_numbers = {
+        b'\xFF\xD8\xFF': 'JPEG',
+        b'\x89PNG\r\n\x1a\n': 'PNG',
+        b'GIF87a': 'GIF',
+        b'GIF89a': 'GIF',
+        b'RIFF': 'WEBP',
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.head(url) as response:
+            content_type = response.headers.get('Content-Type')
+            if content_type.startswith('image/'):
+                return True
+
+            # 第二重校验：魔术数字（异步读取前4字节）
+            header = await response.content.read(4)  # 异步读取操作
+            for magic, img_type in magic_numbers.items():
+                if header.startswith(magic):
+                    return True
+
+    return False
 
 
-async def _analyze_image_input(image_data: bytes) -> tuple[str, str]:
+async def _analyze_image_input(image_data: bytes) -> str:
     """分析图像输入，返回图像类型、置信度和推理原因"""
     # 实现图像格式检测和简单内容分析
     # TODO 这里可以集成真正的CV模型或API
@@ -128,17 +130,15 @@ async def _analyze_image_input(image_data: bytes) -> tuple[str, str]:
         b'RIFF': 'WEBP',
     }
 
-    for signature, (format_name, confidence) in image_signatures.items():
+    for signature, format_name in image_signatures.items():
         if image_data.startswith(signature):
-            reasoning = f"检测到魔术字节签名: {format_name}"
-            return format_name, reasoning
+            return format_name
 
     # 默认情况下，如果是字节数据但无法识别，仍给予中等置信度
-    reasoning = "输入为字节数据，但无法识别具体图像格式"
-    return "unknown_image", reasoning
+    raise Exception("输入为字节数据，但无法识别具体图像格式")
 
 
-def _extract_text_from_input(raw_input: Union[str, bytes]) -> str:
+def _extract_text_from_input(raw_input: str) -> str:
     """从输入数据中提取文本内容"""
     if isinstance(raw_input, bytes):
         try:
@@ -152,8 +152,7 @@ def _extract_text_from_input(raw_input: Union[str, bytes]) -> str:
 async def _classify_text_input(
         text_input: str,
         config: IdentifyInputTypeConfig,
-        builder: Builder,
-        metadata: Dict[str, Any]
+        builder: Builder
 ) -> InputType:
     """
     对文本输入进行分类，区分实体名称和文本描述
