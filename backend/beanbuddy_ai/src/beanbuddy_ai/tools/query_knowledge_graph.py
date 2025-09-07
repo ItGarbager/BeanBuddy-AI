@@ -21,7 +21,7 @@ class QueryKnowledgeGraphConfig(FunctionBaseConfig, name="query_knowledge_graph"
     llm_name: LLMRef = Field(description="The LLM to use for generating responses.")
 
 
-@register_function(config_type=QueryKnowledgeGraphConfig)
+@register_function(config_type=QueryKnowledgeGraphConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
 async def query_knowledge_graph_function(
         config: QueryKnowledgeGraphConfig, builder: Builder
 ):

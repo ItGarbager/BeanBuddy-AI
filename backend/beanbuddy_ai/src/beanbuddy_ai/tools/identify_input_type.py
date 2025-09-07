@@ -26,7 +26,7 @@ class IdentifyInputTypeConfig(FunctionBaseConfig, name="identify_input_type"):
     llm_name: LLMRef = Field(description="The LLM to use for generating responses.")
 
 
-@register_function(config_type=IdentifyInputTypeConfig)
+@register_function(config_type=IdentifyInputTypeConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
 async def identify_input_type_function(
         config: IdentifyInputTypeConfig, builder: Builder
 ):

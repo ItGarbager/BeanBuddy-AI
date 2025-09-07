@@ -21,7 +21,7 @@ class EnhanceDescriptionConfig(FunctionBaseConfig, name="enhance_description"):
     llm_name: LLMRef = Field(description="The LLM to use for generating responses.")
 
 
-@register_function(config_type=EnhanceDescriptionConfig)
+@register_function(config_type=EnhanceDescriptionConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
 async def enhance_description_function(
         config: EnhanceDescriptionConfig, builder: Builder
 ):
