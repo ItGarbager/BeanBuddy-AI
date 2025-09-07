@@ -84,10 +84,10 @@ def _generate_bead_design(image_url: str, color_card_template: str = "卡卡") -
     # 5. 保存结果图片
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     image_name = f"bead_design_{timestamp}.png"
-    image_output_path = f"../frontend/public/{image_name}"
+    image_output_path = f"frontend/public/{image_name}"
 
     # 颜色卡示例（与之前相同）
-    color_card_json = json.load(open('beanbuddy_ai/src/beanbuddy_ai/configs/color_cards.json', 'rb'))
+    color_card_json = json.load(open('backend/beanbuddy_ai/src/beanbuddy_ai/configs/color_cards.json', 'rb'))
 
     # 处理单张图像
     result = process_large_image_with_color_matching(

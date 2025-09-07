@@ -38,12 +38,15 @@ async def query_knowledge_graph_function(
             # 根据主体名称获取的增强后的主体特征
             entity_features = await _generate_entity_features(subject_name, config, builder)
             processed_text = ("一个可爱的Q版{%s}形象\n"
-                              f"1.  **主体**：{entity_features.replace('\n', '; ')}。)\n"
-                              f"2.  **风格**：卡通渲染，色彩明亮且区块化，线条简洁清晰，适合作为拼豆设计蓝图。\n"
-                              f"3.  **背景**：**纯白背景**（Pure transparent background）。\n"
-                              f"4.  **细节**：无阴影，无复杂纹理，整体设计易于识别和制作。\n"
-                              f"5.  **画面**：主体居中，完整展现全身或上半身特写。\n"
-                              f"6.  **输出**：请生成PNG格式的图片，以确保背景透明。")
+                              f"1.  **主体**：{entity_features.replace('\n', '; ')}，排除背景杂物。\n"
+                              "2.  **风格**：卡通渲染，色彩明亮且区块化，线条简洁清晰，适合作为拼豆设计蓝图。\n"
+                              "3.  **背景**：**纯白背景**（Pure transparent background），颜色为#FFFFFF。\n"
+                              "4.  **细节**：无阴影，无复杂纹理，整体设计易于识别和制作。\n"
+                              "5.  **画面**：主体居中，完整展现全身或上半身特写。\n"
+                              "6.  **输出**：请生成PNG格式的图片。\n"
+                              "补充：\n"
+                              "- 完整保留主体轮廓细节（包括毛发、透明材质、细小装饰的边缘），彻底移除所有背景元素\n"
+                              "- 确保主体无残缺、边缘无白边/杂色，尺寸与原图主体比例一致。")
             return QueryKnowledgeGraphOutput(input_data=processed_text)
 
         except Exception as e:

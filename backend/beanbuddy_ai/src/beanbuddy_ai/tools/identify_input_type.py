@@ -70,6 +70,7 @@ async def identify_input_type_function(
             )
 
             return IdentifyInputTypeOutput(
+                input_data=text_input,
                 input_type=input_type
             )
 
@@ -80,6 +81,7 @@ async def identify_input_type_function(
             # 默认视为文本描述，由后续工具链处理
 
             return IdentifyInputTypeOutput(
+                input_data=safe_text,
                 input_type=InputType.TEXT_DESCRIPTION
             )
 

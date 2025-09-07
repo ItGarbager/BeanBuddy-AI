@@ -36,7 +36,7 @@ class ExtractSubjectConfig(FunctionBaseConfig, name="extract_subject"):
         default="将图片转为可爱的Q版风格\n"
                 f"1. **识别**: 自动识别图片中的核心形象主体（如人物、动物、物体），排除背景杂物；\n"
                 "2.  **风格**：卡通渲染，色彩明亮且区块化，线条简洁清晰，适合作为拼豆设计蓝图。\n"
-                "3.  **背景**：**纯白背景**（Pure transparent background）。\n"
+                "3.  **背景**：**纯白背景**（Pure transparent background），颜色为#FFFFFF。\n"
                 "4.  **细节**：无阴影，无复杂纹理，整体设计易于识别和制作。\n"
                 "5.  **画面**：主体居中，完整展现全身或上半身特写。\n"
                 "6.  **输出**：请生成PNG格式的图片，以确保背景透明。\n\n"
