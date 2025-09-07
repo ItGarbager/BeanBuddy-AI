@@ -131,7 +131,8 @@ npm run dev
 
 ### 上次图片转拼豆设计图
 > - 用户:  
-> <img src="docs/images/extract_subject/lizijia.jpg" width="40%">  
+> <img src="docs/images/extract_subject/lizijia.jpg" width="40%">
+
 > - AI:   
 > <img src="docs/images/extract_subject/lizijia_perler.png" width="40%">
 
