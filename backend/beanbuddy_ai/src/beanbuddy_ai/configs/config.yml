@@ -28,7 +28,7 @@ functions:
     description: "生成拼豆设计图和材料清单"
 
 llms:
-  # 默认使用ModelScope API (用户可修改)
+  # 默认使用 BAILIAN API (用户可修改)
   default_llm:
     _type: openai
     model_name: "qwen-plus"
