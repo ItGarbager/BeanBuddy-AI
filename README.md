@@ -192,8 +192,8 @@ workflow:
 ### 调试模式
 
 ```bash
-# 启用详细日志
-nat serve --config_file backend/beanbuddy_ai/src/beanbuddy_ai/configs/config.yml --host 0.0.0.0 --port 8001 --verbose
+cd backend
+nat serve --config_file beanbuddy_ai/src/beanbuddy_ai/configs/config.yml --verbose
 ```
 
 ## 🐛 故障排除
