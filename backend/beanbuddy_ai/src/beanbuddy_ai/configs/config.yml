@@ -26,6 +26,8 @@ functions:
   generate_bean_buddy_design:
     _type: generate_bean_buddy_design
     description: "生成拼豆设计图和材料清单"
+    # 色卡模版，目前支持[卡卡、mard、漫漫、优肯拼豆、盼盼、咪小窝、黄豆豆、coco、柿柿拼豆、小舞]
+    color_card_template: "卡卡"
 
 llms:
   # 默认使用 BAILIAN API (用户可修改)
@@ -65,7 +67,7 @@ workflow:
         *   2. 详细的材料清单（包括颜色、数量、珠子类型）。
     
     **工具调用规范（重要！）：**
-    *   调用 `identify_input_type` 工具时，`Action Input` **必须**是一个严格的JSON对象，其键值对结构必须与工具定义的输入参数**完全匹配**，保证JSON结构完整，不要出现多余字符。
+    *   调用工具时，`Action Input` **必须**是一个严格的JSON对象，其键值对结构必须与工具定义的输入参数**完全匹配**，保证JSON结构完整，不要出现多余字符。
     
     **可用工具列表及描述：**
     {tools}
