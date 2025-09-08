@@ -1,7 +1,7 @@
 # BeanBuddy-AI
 
 
-![功能界面](docs/images/index.jpg)
+![功能界面](docs/images/index.png)
 
 ## 🎯 项目简介
 > **BeanBuddy-AI** 是一个基于多智能体协作的多模态Q版拼豆设计系统。  
