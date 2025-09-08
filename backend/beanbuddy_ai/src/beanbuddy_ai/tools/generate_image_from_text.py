@@ -82,7 +82,7 @@ async def _generate_image_from_text(prompt: str, api_key: str) -> str:
             stream=False,
             watermark=False,
             prompt_extend=True,
-            negative_prompt='',
+            negative_prompt='背景残留、主体残缺、边缘白边、存在阴影',
             size='1328*1328'
         )
 

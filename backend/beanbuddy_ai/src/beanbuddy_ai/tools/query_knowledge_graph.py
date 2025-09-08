@@ -37,11 +37,11 @@ async def query_knowledge_graph_function(
             subject_name = input_data.input_data.strip()
             # 根据主体名称获取的增强后的主体特征
             entity_features = await _generate_entity_features(subject_name, config, builder)
-            processed_text = ("一个可爱的Q版{%s}形象\n"
+            processed_text = (f"一个可爱的Q版{subject_name}形象\n"
                               f"1.  **主体**：{entity_features.replace('\n', '; ')}，排除背景杂物。\n"
-                              "2.  **风格**：卡通渲染，色彩明亮且区块化，线条简洁清晰，适合作为拼豆设计蓝图。\n"
+                              "2.  **风格**：卡通渲染，色彩明亮且区块化，线条简洁清晰。\n"
                               "3.  **背景**：**纯白背景**（Pure transparent background），颜色为#FFFFFF。\n"
-                              "4.  **细节**：无阴影，无复杂纹理，整体设计易于识别和制作。\n"
+                              "4.  **细节**： **不可以产生阴影**，无复杂纹理，整体设计易于识别和制作。\n"
                               "5.  **画面**：主体居中，完整展现全身或上半身特写。\n"
                               "6.  **输出**：请生成PNG格式的图片。\n"
                               "补充：\n"

@@ -1,12 +1,14 @@
 import json
 import logging
 import math
-import os
 # 保留统计信息
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
+from functools import lru_cache
 from io import BytesIO
-from typing import Dict, Any
+from operator import itemgetter
+from typing import Dict, Any, List, Tuple
 
 import cv2
 import numpy as np
@@ -16,10 +18,17 @@ from nat.builder.builder import Builder
 from nat.builder.function_info import FunctionInfo
 from nat.cli.register_workflow import register_function
 from nat.data_models.function import FunctionBaseConfig
+from pydantic import Field
+from rembg import new_session, remove
+from rembg.sessions import BaseSession
 
 from ..models import GenerateBeanBuddyDesignInput, GenerateBeanBuddyDesignOutput
 
 logger = logging.getLogger(__name__)
+
+# 全局会话缓存
+_session_cache = {}
+_color_card_cache = {}
 
 
 class GenerateBeanBuddyDesignConfig(FunctionBaseConfig, name="generate_bean_buddy_design"):
@@ -27,28 +36,61 @@ class GenerateBeanBuddyDesignConfig(FunctionBaseConfig, name="generate_bean_budd
     A tool for generating Lego design diagrams and material lists
     """
     # Add your custom configuration parameters here
-    pass
+    color_card_template: str = Field(
+        default="卡卡",
+        description="用户生成拼豆设计图的色卡模版，默认“卡卡”"
+    )
 
 
 @register_function(config_type=GenerateBeanBuddyDesignConfig)
 async def generate_bean_buddy_design_function(
         config: GenerateBeanBuddyDesignConfig, builder: Builder
 ):
+    """
+            model_name: 模型名称，可选值包括:
+            - "u2net" (通用模型)
+            - "u2netp" (轻量版)
+            - "u2net_human_seg" (人像专用)
+            - "isnet-general-use" (通用高质量，推荐默认)
+            - "silueta" (最快速度)
+            - "birefnet-general" (商业级质量)
+            """
+    # 全局会话对象，避免重复加载模型
+    session: BaseSession = get_session("birefnet-general")
+    # 加载颜色卡
+    with open('beanbuddy_ai/src/beanbuddy_ai/configs/color_cards.json', 'r') as f:
+        color_card_data = json.load(f)
+
+    # 获取颜色卡
+    color_card_json = get_cached_color_card(color_card_data, config.color_card_template)
+
     # Implement your function logic here
     async def _generate_bean_buddy_design_function(
             input_data: GenerateBeanBuddyDesignInput) -> GenerateBeanBuddyDesignOutput:
         try:
-            # 获取默认配置中的api_key
-            result = _generate_bead_design(input_data.input_data)
-            logger.info("颜色统计: %s", result['color_statistics'])
-            logger.info("总豆子数量: %s", result['total_beads'])
+            result = _generate_bead_design(input_data.input_data, color_card_json, session)
+            color_statistics = []
+
+            # 按值排序
+            sorted_dict = dict(sorted(result['color_statistics'].items(), key=itemgetter(1), reverse=True))
+            for color, statistic in sorted_dict.items():
+                hex_str = color_card_json.get(color).get('hex')
+                temp_color_statistic = (f'| {color} | {statistic} | <span style="color: {hex_str};">■</span> |')
+                color_statistics.append(temp_color_statistic)
 
             # 拼接本地链接
             total_beads = result['total_beads']
-            color_statistics = result['color_statistics']
+            output_markdown = (
+                "### Q版拼豆设计图\n"
+                f"![Q版拼豆设计图]({result['image_name']})\n"
+                "### 材料清单\n"
+                f"#### 色卡: {config.color_card_template}\n"
+                "| 珠子编号 | 数量 | 颜色预览 |\n"
+                f"| --- | --- | --- |\n{'\n'.join(color_statistics)}\n"
+                f"### 总数量\n{total_beads}"
+            )
 
-            result_str = f"![设计图](http://localhost:3000/{result['image_name']})\n材料清单列表：{color_statistics}\n总数量：{total_beads}"
-            return GenerateBeanBuddyDesignOutput(input_data=result_str)
+            return GenerateBeanBuddyDesignOutput(input_data=output_markdown)
         except Exception as e:
             logger.error(f"生成拼豆设计图及材料列表过程中发生错误: {str(e)}", exc_info=True)
             # 在出现错误时提供一个安全且符合格式的默认输出
@@ -70,12 +112,14 @@ async def generate_bean_buddy_design_function(
         logger.info("Cleaning up generate_bean_buddy_design workflow.")
 
 
-def _generate_bead_design(image_url: str, color_card_template: str = "卡卡") -> Dict[str, Any]:
+def _generate_bead_design(image_url: str, color_card_json: dict, session: BaseSession) -> Dict[str, Any]:
     """
     生成拼豆设计图并统计颜色数量。
 
     Args:
         image_url (str): 输入图片的URL。
+        color_card_json (dict): 色卡json。
+        session (BaseSession): rembg模型。
 
     Returns:
         dict: 包含处理后的图片数据（如Base64编码字符串）和颜色统计结果。
@@ -86,15 +130,14 @@ def _generate_bead_design(image_url: str, color_card_template: str = "卡卡") -
     image_name = f"bead_design_{timestamp}.png"
     image_output_path = f"../frontend/public/{image_name}"
 
-    # 颜色卡示例（与之前相同）
-    color_card_json = json.load(open('beanbuddy_ai/src/beanbuddy_ai/configs/color_cards.json', 'rb'))
-
     # 处理单张图像
-    result = process_large_image_with_color_matching(
+    result = process_large_image_optimized(
         image_url=image_url,
-        color_card_json=color_card_json.get(color_card_template),
+        color_card_json=color_card_json,
+        session=session,
         image_output_path=image_output_path,
-        draw_labels=True
+        draw_labels=True,
+        max_workers=3  # 根据CPU核心数调整
     )
 
     # 提取所有颜色名称
@@ -113,27 +156,100 @@ def _generate_bead_design(image_url: str, color_card_template: str = "卡卡") -
     }
 
 
+def get_cached_color_card(color_card_json, card_name="卡卡"):
+    """缓存颜色卡数据，避免重复解析"""
+    cache_key = f"{hash(str(color_card_json))}_{card_name}"
+    if cache_key not in _color_card_cache:
+        if isinstance(color_card_json, str):
+            color_data = json.loads(color_card_json)
+        else:
+            color_data = color_card_json
+        _color_card_cache[cache_key] = color_data.get(card_name, {})
+    return _color_card_cache[cache_key]
+
+
+def get_session(model_name: str = "birefnet-general") -> BaseSession:
+    """获取或创建模型会话（使用缓存避免重复加载模型）"""
+    if model_name not in _session_cache:
+        try:
+            _session_cache[model_name] = new_session(model_name)
+            logger.info(f"已加载模型: {model_name}")
+        except Exception as e:
+            logger.error(f"加载模型 {model_name} 失败: {e}")
+            # 回退到默认模型
+            _session_cache[model_name] = new_session("isnet-general-use")
+    return _session_cache[model_name]
+
+
+def remove_background_rembg_optimized(image_url: str,
+                                      session: BaseSession,
+                                      enable_alpha_matting: bool = True) -> Image.Image:
+    """
+    使用rembg库进行高质量背景移除（优化版）
+
+    参数:
+    image_url: 图片链接
+    session: rembg模型会话
+    enable_alpha_matting: 是否启用Alpha Matting精细边缘处理
+
+    返回:
+    PIL Image对象（RGBA模式，背景透明）
+    """
+    try:
+        # 下载图像（使用流式下载减少内存使用）
+        response = requests.get(image_url, timeout=10, stream=True)
+        response.raise_for_status()
+
+        # 使用BytesIO进行流式处理
+        content = BytesIO()
+        for chunk in response.iter_content(chunk_size=8192):
+            content.write(chunk)
+        content.seek(0)
+
+        input_image = Image.open(content).convert("RGBA")
+        logger.info(f"图像下载成功，尺寸: {input_image.size}")
+
+        # 移除背景
+        output_image = remove(
+            input_image,
+            session=session,
+            alpha_matting=enable_alpha_matting,
+            alpha_matting_foreground_threshold=240,
+            alpha_matting_background_threshold=10,
+            alpha_matting_erode_size=5,
+            post_process_mask=True
+        )
+
+        return output_image
+
+    except Exception as e:
+        logger.error(f"背景移除处理失败: {e}")
+        raise
+
+
+@lru_cache(maxsize=128)
 def color_distance(rgb1, rgb2):
-    """计算两个RGB颜色之间的欧几里得距离"""
+    """计算两个RGB颜色之间的欧几里得距离（使用缓存）"""
     return math.sqrt(sum((c1 - c2) ** 2 for c1, c2 in zip(rgb1, rgb2)))
 
 
-def find_closest_color(avg_color, color_card: dict):
-    """在颜色卡中找到最接近的颜色"""
+def find_closest_color(avg_color, color_card):
+    """在颜色卡中找到最接近的颜色（优化版）"""
     min_distance = float('inf')
     closest_color_name = "Unknown"
     closest_color_hex = "#000000"
     closest_color_rgb = (0, 0, 0)
 
-    for color_name, color_info in color_card.items():
-        card_rgb = tuple(color_info['rgb'])
-        distance = color_distance(avg_color, card_rgb)
+    # 预计算颜色卡RGB值
+    color_rgbs = [(name, info['rgb']) for name, info in color_card.items()]
 
+    for color_name, card_rgb in color_rgbs:
+        distance = color_distance(tuple(avg_color), tuple(card_rgb))
         if distance < min_distance:
             min_distance = distance
             closest_color_name = color_name
-            closest_color_hex = color_info['hex']
-            closest_color_rgb = card_rgb  # 使用颜色卡中的标准RGB值
+            closest_color_hex = color_card[color_name]['hex']
+            closest_color_rgb = card_rgb
 
     return closest_color_name, closest_color_hex, closest_color_rgb
 
@@ -149,22 +265,71 @@ def process_tile_color_matching(tile_np, color_card):
     return "Unknown", "#000000", [0, 0, 0], (0, 0, 0)
 
 
-def process_large_image_with_color_matching(image_url, color_card_json,
-                                            image_output_path=None,
-                                            draw_labels=False,
-                                            replace_colors=True) -> Dict[str, Any]:
+def optimized_resize(image: Image.Image, target_size: Tuple[int, int]) -> Image.Image:
     """
-    分块处理大图像并进行颜色匹配和替换
+    优化图像缩放函数，减少格式转换开销
+    """
+    # 直接使用PIL进行缩放，减少格式转换
+    return image.resize(target_size, Image.Resampling.LANCZOS)
 
-    参数:
-    image_url: 输入图像链接
-    color_card_json: 颜色卡JSON
-    image_output_path: 输出图像路径（可选）
-    draw_labels: 是否在图像上绘制颜色标签
-    replace_colors: 是否将网格替换为匹配的颜色
 
-    返回:
-    color_mapping: 每个网格的颜色匹配结果字典
+def process_grid_cell_batch(grid_data: List[Tuple]) -> List[Dict]:
+    """
+    批量处理网格单元 - 适用于多进程
+    """
+    results = []
+    for x, y, grid_size, width, height, final_image, alpha_resized, color_card in grid_data:
+        # 计算当前网格区域
+        box = (x, y, min(x + grid_size, width), min(y + grid_size, height))
+        box_width = box[2] - box[0]
+        box_height = box[3] - box[1]
+
+        # 检查透明度
+        alpha_box = (x, y, box[2], box[3])
+        alpha_tile = alpha_resized[alpha_box[1]:alpha_box[3], alpha_box[0]:alpha_box[2]]
+
+        if np.all(alpha_tile == 0):
+            results.append(None)
+            continue
+
+        # 提取图像块并处理
+        tile_np = final_image[box[1]:box[3], box[0]:box[2]]
+
+        # 颜色匹配
+        color_name, color_hex, avg_color, matched_rgb = process_tile_color_matching(
+            tile_np, color_card
+        )
+
+        results.append({
+            'cell_id': f"{x}_{y}",
+            'position': {'x': x, 'y': y},
+            'size': {'width': box_width, 'height': box_height},
+            'avg_color': avg_color,
+            'matched_color': {
+                'name': color_name,
+                'hex': color_hex,
+                'rgb': matched_rgb
+            }
+        })
+
+    return results
+
+
+def resize_image_pil(image, scale_factor, interpolation=cv2.INTER_NEAREST):
+    """使用PIL进行图像缩放（内存中操作）"""
+    width, height = image.size
+    new_size = (int(width * scale_factor), int(height * scale_factor))
+    return image.resize(new_size, interpolation)
+
+
+def process_large_image_optimized(image_url: str, color_card_json: Dict,
+                                  session: Any, grid_base_size: int = 10,
+                                  image_output_path: str = None,
+                                  draw_labels: bool = False,
+                                  replace_colors: bool = True,
+                                  max_workers: int = None) -> Dict[str, Any]:
+    """
+    优化版的大图像处理函数
     """
     # 解析颜色卡
     if isinstance(color_card_json, str):
@@ -172,99 +337,118 @@ def process_large_image_with_color_matching(image_url, color_card_json,
     else:
         color_card = color_card_json
 
-    # 存储颜色匹配结果
+    # 1. 移除背景
+    transparent_result = remove_background_rembg_optimized(
+        image_url=image_url,
+        session=session,
+        enable_alpha_matting=True
+    )
+
+    # 2. 转换为RGB并调整大小（全部在内存中完成）
+    # 使用PIL直接缩放, scale_factor 缩放系数，1 默认不缩放，越大质量越高，但处理越慢
+    resized_img = resize_image_pil(transparent_result, 1, interpolation=cv2.INTER_NEAREST)
+
+    # 3. 放大图像（使用OpenCV但在内存中处理）
+    magnification = 5
+    width, height = resized_img.size
+    new_size = (width * magnification, height * magnification)
+
+    # 将PIL图像转换为numpy数组供OpenCV使用
+    resized_np = np.array(resized_img)
+    # 转换为BGR格式（OpenCV默认格式）
+    resized_np = cv2.cvtColor(resized_np, cv2.COLOR_RGB2BGR)
+    # 使用OpenCV放大（内存中操作）
+    resized_image = cv2.resize(resized_np, new_size, interpolation=cv2.INTER_NEAREST)
+    final_image_np = cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB)
+    # 将OpenCV图像（BGR格式）转换回PIL图像（RGB格式）
+    final_image = Image.fromarray(final_image_np)
+
+    # 同时处理透明通道的放大
+    alpha_channel = np.array(transparent_result.split()[-1])  # 提取alpha通道
+    alpha_resized = cv2.resize(alpha_channel, new_size, interpolation=cv2.INTER_NEAREST)
+    width, height = final_image.size
+    grid_size = grid_base_size * magnification
+
+    # 4. 创建画布
+    canvas = Image.new('RGB', (width, height), (255, 255, 255))
+    draw = ImageDraw.Draw(canvas)
+
+    # 5. 预计算所有网格坐标
+    grid_coords = []
+    for y in range(0, height, grid_size):
+        for x in range(0, width, grid_size):
+            grid_coords.append((x, y))
+
+    # 6. 使用多进程并行处理
     color_mapping = {}
 
-    response = requests.get(image_url)
-    original_img = Image.open(BytesIO(response.content))
-    original_img = Image.fromarray(np.uint8(original_img)).convert('RGB')
-    height, width = original_img.size
-    original_img = original_img.resize([height // 2, width // 2], cv2.INTER_NEAREST)
-    original_img.save('temp.png')
+    # 确定最佳工作进程数
+    if max_workers is None:
+        max_workers = max(1, min(len(grid_coords), 4))  # 限制最大进程数
 
-    # 读取图像
-    image = cv2.imread('temp.png')
-    # 放大倍数
-    magnification = 5
-    # 指定新尺寸
-    height, width = image.shape[:2]
-    height *= magnification
-    width *= magnification
-    grid_size = 10 * magnification
+    # 将网格数据分批次处理，减少进程间通信开销
+    batch_size = max(10, len(grid_coords) // (max_workers * 2))
+    grid_batches = []
 
-    resized_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_NEAREST)
-    # 保存
-    cv2.imwrite('temp.png', resized_image)
+    for i in range(0, len(grid_coords), batch_size):
+        batch_coords = grid_coords[i:i + batch_size]
+        batch_data = []
 
-    with Image.open('temp.png') as original_img:
-        # 创建空白画布（与原图尺寸相同，白色背景）
-        canvas = Image.new('RGB', original_img.size, (255, 255, 255))
-        draw = ImageDraw.Draw(canvas)
+        for x, y in batch_coords:
+            batch_data.append((x, y, grid_size, width, height,
+                               final_image_np, alpha_resized, color_card))
 
-        # 处理每个网格
-        for y in range(0, height, grid_size):
-            for x in range(0, width, grid_size):
-                # 计算当前网格区域
-                box = (x, y, min(x + grid_size, width), min(y + grid_size, height))
-                box_width = box[2] - box[0]
-                box_height = box[3] - box[1]
+        grid_batches.append(batch_data)
 
-                # 提取图像块
-                tile = original_img.crop(box)
-                tile_np = np.array(tile)
+    # 使用多进程处理批次
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(process_grid_cell_batch, batch_data)
+            for batch_data in grid_batches
+        ]
 
-                # 颜色匹配
-                color_name, color_hex, avg_color, matched_rgb = process_tile_color_matching(tile_np, color_card)
-                matched_rgb = tuple(np.clip(matched_rgb, 0, 255).astype(int))
+        for future in as_completed(futures):
+            batch_results = future.result()
+            for result in batch_results:
+                if result is None:
+                    continue
 
-                # 存储结果
-                cell_id = f"{x}_{y}"
-                color_mapping[cell_id] = {
-                    'position': {'x': x, 'y': y},
-                    'size': {'width': box_width, 'height': box_height},
-                    'avg_color': avg_color,
-                    'matched_color': {
-                        'name': color_name,
-                        'hex': color_hex,
-                        'rgb': matched_rgb
-                    }
-                }
+                cell_id = result['cell_id']
+                color_mapping[cell_id] = result
 
-                # 替换网格颜色为匹配的颜色
+                # 应用颜色替换和标签绘制
+                x, y = result['position']['x'], result['position']['y']
+                box_width = result['size']['width']
+                box_height = result['size']['height']
+                matched_rgb = tuple(result['matched_color']['rgb'])
+
                 if replace_colors:
-                    # 创建纯色块
-                    color_block = Image.new('RGB', (box_width, box_height), tuple(matched_rgb))
-
-                    # 将纯色块粘贴到输出图像
+                    color_block = Image.new('RGB', (box_width, box_height), matched_rgb)
                     canvas.paste(color_block, (x, y))
 
-                # 在图像上绘制标签
                 if draw_labels:
-                    # 计算网格中心
                     center_x = x + box_width // 2
                     center_y = y + box_height // 2
 
-                    # 根据背景颜色亮度选择文本颜色
                     brightness = (matched_rgb[0] * 299 + matched_rgb[1] * 587 + matched_rgb[2] * 114) // 1000
                     text_color = 'black' if brightness > 128 else 'white'
 
-                    # 绘制标签
-                    font = ImageFont.load_default(size=3 * magnification)
+                    try:
+                        font = ImageFont.truetype("arial.ttf", 3 * magnification)
+                    except:
+                        font = ImageFont.load_default()
 
-                    if font:
-                        draw.text((center_x, center_y), color_name, fill=text_color, font=font, anchor='mm')
-                    else:
-                        draw.text((center_x, center_y), color_name, fill=text_color, anchor='mm')
+                    draw.text((center_x, center_y), result['matched_color']['name'],
+                              fill=text_color, font=font, anchor='mm')
 
-            # 绘制网格线
-            for x in range(grid_size, width, grid_size):
-                draw.line([(x, grid_size), (x, height)], fill='white', width=1)
-            for y in range(grid_size, height, grid_size):
-                draw.line([(grid_size, y), (width, y)], fill='white', width=1)
-        # 保存输出图像
-        if image_output_path and (draw_labels or replace_colors):
-            canvas.save(image_output_path)
+    # 7. 绘制网格线
+    for x in range(grid_size, width, grid_size):
+        draw.line([(x, 0), (x, height)], fill='black', width=1)
+    for y in range(grid_size, height, grid_size):
+        draw.line([(0, y), (width, y)], fill='black', width=1)
 
-    os.remove("temp.png")
+    # 8. 保存结果
+    if image_output_path:
+        canvas.save(image_output_path, optimize=True, quality=95)
 
     return color_mapping

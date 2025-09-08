@@ -33,9 +33,9 @@ async def enhance_description_function(
             description = await _enhance_description(description, config, builder)
 
             return EnhanceDescriptionOutput(input_data=(f"• 描述信息：{description}。\n"
-                                                        "• 风格：卡通渲染，色彩明亮且区块化，线条简洁清晰，适合作为拼豆设计蓝图。\n"
+                                                        "• 风格：卡通渲染，色彩明亮且区块化，线条简洁清晰。\n"
                                                         "• 背景：纯白背景（Pure transparent background），颜色为#FFFFFF。\n"
-                                                        "• 细节：无阴影，无复杂纹理，整体设计易于识别和制作。\n"))
+                                                        "• 细节： **不可以产生阴影**，无复杂纹理，整体设计易于识别和制作。\n"))
         except Exception as e:
             logger.error(f"根据简短文本生成丰富的拼豆设计描述过程中发生错误: {str(e)}", exc_info=True)
             # 在出现错误时提供一个安全且符合格式的默认输出
