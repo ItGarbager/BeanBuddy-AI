@@ -212,6 +212,12 @@ aiq serve --port 8002
 ```
 
 #### 2. API密钥错误
+```text
+错误一
+nat.agent.react_agent.agent - ERROR - [AGENT] Failed to call agent_node: 'ascii' codec can't encode characters in position 7-14: ordinal not in range(128)
+错误二
+openai.AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided. ', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}, 'request_id': 'xxx'}
+```
 - 检查 `backend/beanbuddy_ai/src/beanbuddy_ai/configs/config.yml` 中的API密钥配置
 - 验证API密钥的有效性和权限
 
