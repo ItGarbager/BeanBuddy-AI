@@ -128,6 +128,18 @@ npm run dev
 > - 用户: 佐助  
 > - AI:  
 > <img src="docs/images/entity_name/zuozhu_perler.png" width="40%">
+> 
+> ### 材料清单
+> #### 色卡: 卡卡
+> | 珠子编号 | 数量 | 颜色预览 |
+> | --- | --- | --- |
+> | B09 | 1192 | <span style="color: #17181B;">■</span> |
+> | B16 | 822 | <span style="color: #283F54;">■</span> |
+> | B08 | 806 | <span style="color: #202126;">■</span> |
+> | B159 | 771 | <span style="color: #404F6A;">■</span> |
+> 
+> ...
+
 
 
 ### 上次图片转拼豆设计图
@@ -221,8 +233,13 @@ openai.AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect A
 - 检查 `backend/beanbuddy_ai/src/beanbuddy_ai/configs/config.yml` 中的API密钥配置
 - 验证API密钥的有效性和权限
 
+#### 3. rembg模型无法下载
+```text
+rembg模型链接: https://pan.baidu.com/s/1VuEo_s_phxKlskoo-KUsag?pwd=ynua 提取码: ynua
+```
+下载后存储至`~/.u2net/`目录下即可
 
-#### 3. 前端无法连接后端
+#### 4. 前端无法连接后端
 - 检查后端是否正常启动（访问 http://localhost:8001/health）
 - 确认端口配置正确
 - 检查防火墙设置
