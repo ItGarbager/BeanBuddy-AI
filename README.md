@@ -133,10 +133,10 @@ npm run dev
 > #### 色卡: 卡卡
 > | 珠子编号 | 数量 | 颜色预览 |
 > | --- | --- | --- |
-> | B09 | 1192 | <span style="color: #17181B;">■</span> |
-> | B16 | 822 | <span style="color: #283F54;">■</span> |
-> | B08 | 806 | <span style="color: #202126;">■</span> |
-> | B159 | 771 | <span style="color: #404F6A;">■</span> |
+> | B09 | 1192 | $${\color{green}■}$$ |
+> | B16 | 822 | $${\color{blue}■}$$ |
+> | B08 | 806 | $${\color{red}■}$$ |
+> | B159 | 771 | $${\color{yellow}■}$$ |
 > 
 > ...
 
