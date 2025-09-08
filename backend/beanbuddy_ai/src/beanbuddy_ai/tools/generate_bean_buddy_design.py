@@ -41,6 +41,11 @@ class GenerateBeanBuddyDesignConfig(FunctionBaseConfig, name="generate_bean_budd
         description="用户生成拼豆设计图的色卡模版，默认“卡卡”"
     )
 
+    rembg_model_name: str = Field(
+        default="卡卡",
+        description="rembg模型名称，默认“isnet-general-use”"
+    )
+
 
 @register_function(config_type=GenerateBeanBuddyDesignConfig)
 async def generate_bean_buddy_design_function(
@@ -56,7 +61,7 @@ async def generate_bean_buddy_design_function(
             - "birefnet-general" (商业级质量)
             """
     # 全局会话对象，避免重复加载模型
-    session: BaseSession = get_session("birefnet-general")
+    session: BaseSession = get_session(config.rembg_model_name)
     # 加载颜色卡
     with open('beanbuddy_ai/src/beanbuddy_ai/configs/color_cards.json', 'r') as f:
         color_card_data = json.load(f)

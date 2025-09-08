@@ -28,6 +28,14 @@ functions:
     description: "生成拼豆设计图和材料清单"
     # 色卡模版，目前支持[卡卡、mard、漫漫、优肯拼豆、盼盼、咪小窝、黄豆豆、coco、柿柿拼豆、小舞]
     color_card_template: "卡卡"
+    # rembg 模型名称，默认 isnet-general-use，进行图片处理
+    #  - "u2net" (通用模型)
+    #  - "u2netp" (轻量版)
+    #  - "u2net_human_seg" (人像专用)
+    #  - "isnet-general-use" (通用高质量，推荐默认)
+    #  - "silueta" (最快速度)
+    #  - "birefnet-general" (商业级质量)
+    rembg_model_name: "isnet-general-use"
 
 llms:
   # 默认使用 BAILIAN API (用户可修改)
