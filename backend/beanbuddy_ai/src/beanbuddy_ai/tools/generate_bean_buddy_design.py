@@ -75,10 +75,7 @@ async def generate_bean_buddy_design_function(
         try:
             result = _generate_bead_design(input_data.input_data, color_card_json, session)
             color_statistics = []
-
-            # 按值排序
-            sorted_dict = dict(sorted(result['color_statistics'].items(), key=itemgetter(1), reverse=True))
-            for color, statistic in sorted_dict.items():
+            for color, statistic in result['color_statistics'].items():
                 hex_str = color_card_json.get(color).get('hex')
                 temp_color_statistic = (f'| {color} | {statistic} | <span style="color: {hex_str};">■</span> |')
                 color_statistics.append(temp_color_statistic)
@@ -145,19 +142,9 @@ def _generate_bead_design(image_url: str, color_card_json: dict, session: BaseSe
         max_workers=3  # 根据CPU核心数调整
     )
 
-    # 提取所有颜色名称
-    color_names = [cell['matched_color']['name'] for cell in result.values()]
-
-    # 统计出现次数
-    color_count = Counter(color_names)
-
-    # 输出结果
-    color_names = dict(color_count)
-
     return {
         'image_name': image_name,
-        'color_statistics': color_names,
-        'total_beads': sum(color_count.values()),
+        **result
     }
 
 
@@ -232,7 +219,7 @@ def remove_background_rembg_optimized(image_url: str,
         raise
 
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=None)
 def color_distance(rgb1, rgb2):
     """计算两个RGB颜色之间的欧几里得距离（使用缓存）"""
     return math.sqrt(sum((c1 - c2) ** 2 for c1, c2 in zip(rgb1, rgb2)))
@@ -255,7 +242,6 @@ def find_closest_color(avg_color, color_card):
             closest_color_name = color_name
             closest_color_hex = color_card[color_name]['hex']
             closest_color_rgb = card_rgb
-
     return closest_color_name, closest_color_hex, closest_color_rgb
 
 
@@ -327,6 +313,94 @@ def resize_image_pil(image, scale_factor, interpolation=cv2.INTER_NEAREST):
     return image.resize(new_size, interpolation)
 
 
+def add_coordinates_and_statistics(canvas, width, height, grid_size, sorted_dict, color_mapping):
+    """
+    添加坐标网格和颜色统计信息
+
+    参数:
+    canvas: 画布对象
+    draw: ImageDraw对象
+    width: 画布宽度
+    height: 画布高度
+    grid_size: 网格大小
+    sorted_dict: 排序后的颜色次数字典
+    color_mapping: 颜色映射数据
+    magnification: 放大倍数
+    """
+
+    # 设置坐标区域高度（底部和右侧各留50像素用于坐标和统计信息）
+    # 计算颜色块尺寸
+    bar_height = 35
+    # 每个颜色块的固定宽度（等宽）
+    color_width = grid_size * 3
+    # 坐标字体大小
+    font_size = 20
+    max_rows = sorted_dict.__len__() * color_width // width + 1
+    coordinate_area_height = bar_height * max_rows + font_size
+    coordinate_area_width = 50
+
+    # 调整画布大小以容纳坐标和统计信息
+    new_width = width + coordinate_area_width
+    new_height = height + coordinate_area_height
+    new_canvas = Image.new('RGB', (new_width, new_height), (255, 255, 255))
+    new_canvas.paste(canvas, (0, 0))
+
+    # 创建新的draw对象
+    new_draw = ImageDraw.Draw(new_canvas)
+
+    # 1. 添加坐标网格
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except:
+        font = ImageFont.load_default()
+    # 添加X轴坐标
+    new_draw.line([(0, height), (width, height)], fill='black', width=1)
+    for x in range(0, width, grid_size):
+        if x % grid_size == 0 or x == width - grid_size:  # 每5个网格标记一次
+            new_draw.text((x + 5, height), str(x // grid_size + 1), fill='black',
+                          font=font)
+
+    # 添加Y轴坐标
+    new_draw.line([(width, 0), (width, height)], fill='black', width=1)
+    for y in range(0, height, grid_size):
+        if y % grid_size == 0 or y == height - grid_size:  # 每5个网格标记一次
+            new_draw.text((width, y + 5), str(y // grid_size + 1), fill='black',
+                          font=font)
+
+    # 2. 添加颜色统计条
+    # 绘制颜色统计条
+    row = 0
+    current_x = 0
+
+    for color_name, count in sorted_dict.items():
+        # 获取颜色信息
+        color_info = next(cell for cell in color_mapping.values()
+                          if cell['matched_color']['name'] == color_name)
+        color_rgb = tuple(color_info['matched_color']['rgb'])
+
+        # 如果当前行放不下，换到下一行
+        if current_x + color_width > width and row < max_rows - 1:
+            row += 1
+            current_x = 0
+
+        # 绘制颜色块
+        if row < max_rows:
+            y_start = height + font_size + row * bar_height
+            new_draw.rectangle([current_x, y_start, current_x + color_width, y_start + bar_height],
+                               fill=color_rgb, outline='black')
+
+            # 添加颜色标签（根据亮度选择文字颜色）
+            brightness = (color_rgb[0] * 299 + color_rgb[1] * 587 + color_rgb[2] * 114) // 1000
+            text_color = 'black' if brightness > 128 else 'white'
+
+            new_draw.text((current_x + color_width // 2, y_start + bar_height // 2),
+                          f"{color_name}({count})", fill=text_color, font=font, anchor='mm')
+
+            current_x += color_width
+
+    return new_canvas
+
+
 def process_large_image_optimized(image_url: str, color_card_json: Dict,
                                   session: Any, grid_base_size: int = 10,
                                   image_output_path: str = None,
@@ -348,6 +422,7 @@ def process_large_image_optimized(image_url: str, color_card_json: Dict,
         session=session,
         enable_alpha_matting=True
     )
+    # transparent_result = Image.open("temp.png").convert("RGBA")
 
     # 2. 转换为RGB并调整大小（全部在内存中完成）
     # 使用PIL直接缩放, scale_factor 缩放系数，1 默认不缩放，越大质量越高，但处理越慢
@@ -452,8 +527,26 @@ def process_large_image_optimized(image_url: str, color_card_json: Dict,
     for y in range(grid_size, height, grid_size):
         draw.line([(0, y), (width, y)], fill='black', width=1)
 
-    # 8. 保存结果
+    # 提取所有颜色名称
+    color_names = [r['matched_color']['name'] for r in color_mapping.values()]
+
+    # 统计出现次数
+    color_count = Counter(color_names)
+
+    # 输出结果
+    color_names = dict(color_count)
+
+    # 按值排序
+    sorted_dict = dict(sorted(color_names.items(), key=itemgetter(1), reverse=True))
+
+    # 8. 添加坐标和统计信息
+    canvas = add_coordinates_and_statistics(canvas, width, height, grid_size, sorted_dict, color_mapping)
+
+    # 9. 保存结果
     if image_output_path:
         canvas.save(image_output_path, optimize=True, quality=95)
 
-    return color_mapping
+    return {
+        'color_statistics': sorted_dict,
+        'total_beads': sum(color_count.values()),
+    }
